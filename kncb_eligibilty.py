@@ -8,23 +8,20 @@ def get_most_recent_division(division_data):
             return division
     return "None"
 
-def check_75_percent_rule(player_name, topklasse=0, hoofdklasse=0, eerste_klasse=0, tweede_klasse=0, derde_klasse=0, vierde_klasse=0):
-    division_order = [
-        ("Topklasse", topklasse),
-        ("Hoofdklasse", hoofdklasse),
-        ("Eerste Klasse", eerste_klasse),
-        ("Tweede Klasse", tweede_klasse),
-        ("Derde Klasse", derde_klasse),
-        ("Vierde Klasse", vierde_klasse)
-    ]
-    total_matches = sum(m for _, m in division_order)
+def check_75_percent_rule(player_name, current, previous, use_previous):
+    if use_previous:
+        combined = [(div, current[div] + previous[div]) for div in current]
+    else:
+        combined = [(div, current[div]) for div in current]
+
+    total_matches = sum(m for _, m in combined)
     if total_matches == 0:
         return "No matches played.", False, "None", 0
 
-    most_recent_division = get_most_recent_division(division_order)
+    most_recent_division = get_most_recent_division(combined)
     seen_recent = False
     lower_matches = 0
-    for division, count in division_order:
+    for division, count in combined:
         if division == most_recent_division:
             seen_recent = True
             continue
@@ -75,15 +72,33 @@ st.title("🏏 KNCB Player Eligibility Checker")
 
 with st.form("player_form"):
     name = st.text_input("Player name")
+    use_previous = st.checkbox("Include Previous Season Matches", value=True)
+
+    st.markdown("### This Season")
     col1, col2 = st.columns(2)
     with col1:
-        top = st.number_input("Topklasse matches", 0)
-        eerste = st.number_input("Eerste Klasse matches", 0)
-        derde = st.number_input("Derde Klasse matches", 0)
+        top_c = st.number_input("Topklasse (current)", 0)
+        eerste_c = st.number_input("Eerste Klasse (current)", 0)
+        derde_c = st.number_input("Derde Klasse (current)", 0)
     with col2:
-        hoofd = st.number_input("Hoofdklasse matches", 0)
-        tweede = st.number_input("Tweede Klasse matches", 0)
-        vierde = st.number_input("Vierde Klasse matches", 0)
+        hoofd_c = st.number_input("Hoofdklasse (current)", 0)
+        tweede_c = st.number_input("Tweede Klasse (current)", 0)
+        vierde_c = st.number_input("Vierde Klasse (current)", 0)
+
+    previous = {}
+    if use_previous:
+        st.markdown("### Previous Season")
+        col3, col4 = st.columns(2)
+        with col3:
+            top_p = st.number_input("Topklasse (previous)", 0)
+            eerste_p = st.number_input("Eerste Klasse (previous)", 0)
+            derde_p = st.number_input("Derde Klasse (previous)", 0)
+        with col4:
+            hoofd_p = st.number_input("Hoofdklasse (previous)", 0)
+            tweede_p = st.number_input("Tweede Klasse (previous)", 0)
+            vierde_p = st.number_input("Vierde Klasse (previous)", 0)
+    else:
+        top_p = eerste_p = derde_p = hoofd_p = tweede_p = vierde_p = 0
 
     last_higher = st.date_input("Last higher match date")
     next_lower = st.date_input("Intended lower match date")
@@ -94,7 +109,23 @@ with st.form("player_form"):
     submitted = st.form_submit_button("Check Eligibility")
 
 if submitted:
-    lower_matches, is_lower, recent_div, percent = check_75_percent_rule(name, top, hoofd, eerste, tweede, derde, vierde)
+    current = {
+        "Topklasse": top_c,
+        "Hoofdklasse": hoofd_c,
+        "Eerste Klasse": eerste_c,
+        "Tweede Klasse": tweede_c,
+        "Derde Klasse": derde_c,
+        "Vierde Klasse": vierde_c,
+    }
+    previous = {
+        "Topklasse": top_p,
+        "Hoofdklasse": hoofd_p,
+        "Eerste Klasse": eerste_p,
+        "Tweede Klasse": tweede_p,
+        "Derde Klasse": derde_p,
+        "Vierde Klasse": vierde_p,
+    }
+    lower_matches, is_lower, recent_div, percent = check_75_percent_rule(name, current, previous, use_previous)
     st.subheader("Eligibility Result")
     st.write(f"**Most Recent Higher Division Played:** {recent_div}")
     st.write(f"**Total Lower Division Matches:** {lower_matches}")
